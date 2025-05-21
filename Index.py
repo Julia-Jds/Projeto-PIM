@@ -1,5 +1,5 @@
 import json, os, base64, time, hashlib
-from datetime import datetime # (Importado mas não utilizado)
+from datetime import datetime
 
 ARQUIVO_DADOS = "alunos.json"
 
