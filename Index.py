@@ -1,4 +1,4 @@
-import json, os, base64, time
+import json, os, base64, time, traceback
 from datetime import datetime
 
 ARQUIVO_DADOS = "alunos.json"
@@ -15,6 +15,7 @@ def salvar_dados(dados):
             f.write(json.dumps(dados, ensure_ascii=False, indent=2))
     except Exception as e:
         print("Erro ao salvar os dados:", e)
+        traceback.print_exc()
 
 def carregar_dados():
     if os.path.exists(ARQUIVO_DADOS):  
@@ -22,10 +23,11 @@ def carregar_dados():
             conteudo = f.read()
             if conteudo:
                 try:
-                    return json.loads(conteudo)  # <- Corrigido: não descriptografa o JSON
+                    return json.loads(conteudo)
                 except Exception as e:
                     print("Erro ao carregar dados:", e)
-    return []  
+                    traceback.print_exc()
+    return []
 
 def separador():
     print("-" * 40)
@@ -39,7 +41,7 @@ def cadastrar_usuario(dados):
     idade = input("Idade: ")
     email = input("Email: ")
 
-    if any(aluno["email"] == email for aluno in dados):
+    if any(aluno.get("email") == email for aluno in dados):
         print("Já existe um usuário com este e-mail.")
         return
 
@@ -65,7 +67,7 @@ def cadastrar_usuario(dados):
         "nome": nome,
         "idade": idade,
         "email": email,
-        "senha": criptografar(senha),  # Apenas a senha é criptografada
+        "senha": criptografar(senha),
         "cursos": cursos,
         "tempo_total": 0,
         "acessos": 0
@@ -82,17 +84,21 @@ def login(dados):
     senha = input("Senha: ")
 
     for u in dados:
-        if u["email"] == email and descriptografar(u.get("senha", "")) == senha:
-            print(f"\nBem-vindo(a), {u['nome']}!")
-            u["acessos"] += 1
-            menu_usuario(u, dados, time.time())
-            return
+        try:
+            if u.get("email") == email and descriptografar(u.get("senha", "")) == senha:
+                print(f"\nBem-vindo(a), {u.get('nome')}!")
+                u["acessos"] = u.get("acessos", 0) + 1
+                menu_usuario(u, dados, time.time())
+                return
+        except Exception as e:
+            print("Erro ao tentar autenticar:", e)
+            traceback.print_exc()
     print("Email ou senha incorretos!")
 
 def menu_usuario(u, dados, inicio):
     while True:
         separador()
-        print(f"MENU DE {u['nome']}")
+        print(f"MENU DE {u.get('nome')}")
         separador()
         print("1. Ver cursos\n2. Estudar lógica\n3. Estudar ciber\n4. Estudar Python")
         print("5. Ver relatório\n6. Apagar minha conta\n7. Sair")
@@ -107,8 +113,8 @@ def menu_usuario(u, dados, inicio):
         elif op == "4":
             curso("Python")
         elif op == "5":
-            print(f"\nNome: {u['nome']}\nEmail: {u['email']}\nCursos: {', '.join(u['cursos'])}")
-            print(f"Acessos: {u['acessos']}\nTempo total: {int(u['tempo_total'])}s")
+            print(f"\nNome: {u.get('nome')}\nEmail: {u.get('email')}\nCursos: {', '.join(u.get('cursos', []))}")
+            print(f"Acessos: {u.get('acessos', 0)}\nTempo total: {int(float(u.get('tempo_total', 0)))}s")
         elif op == "6":
             confirm = input("Tem certeza que deseja apagar sua conta? (s/n): ").lower()
             if confirm == "s":
@@ -117,7 +123,7 @@ def menu_usuario(u, dados, inicio):
                 print("Conta apagada com sucesso.")
                 break
         elif op == "7":
-            u["tempo_total"] += time.time() - inicio
+            u["tempo_total"] = float(u.get("tempo_total", 0)) + (time.time() - inicio)
             salvar_dados(dados)
             print("Saindo...")
             break
@@ -144,13 +150,17 @@ def relatorio_alunos(dados):
         print("Nenhum aluno cadastrado.")
     else:
         for a in dados:
-            print(f"Nome: {a['nome']}\nEmail: {a['email']}\nIdade: {a['idade']}")
-            print(f"Cursos: {', '.join(a['cursos'])}\nAcessos: {a['acessos']}")
-            print(f"Tempo total: {int(a['tempo_total'])}s")
-            separador()
+            try:
+                print(f"Nome: {a.get('nome')}\nEmail: {a.get('email')}\nIdade: {a.get('idade')}")
+                print(f"Cursos: {', '.join(a.get('cursos', []))}\nAcessos: {a.get('acessos', 0)}")
+                print(f"Tempo total: {int(float(a.get('tempo_total', 0)))}s")
+                separador()
+            except Exception as e:
+                print("Erro ao exibir aluno:", e)
+                traceback.print_exc()
 
 def menu_principal():
-    dados = carregar_dados()  
+    dados = carregar_dados()
     while True:
         separador()
         print("PLATAFORMA - ONG EDUCACIONAL")
