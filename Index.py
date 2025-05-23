@@ -1,13 +1,13 @@
-import json, os, base64, time, traceback
+import json, os, time, traceback, hashlib
 from datetime import datetime
 
 ARQUIVO_DADOS = "alunos.json"
 
 def criptografar(texto):
-    return base64.b64encode(texto.encode()).decode()
+    return hashlib.sha256(texto.encode()).hexdigest()
 
 def descriptografar(texto):
-    return base64.b64decode(texto.encode()).decode()
+    return texto
 
 def salvar_dados(dados):
     try:
@@ -83,19 +83,21 @@ def login(dados):
     email = input("Email: ")
     senha = input("Senha: ")
 
+    senha_hash = criptografar(senha)
+
     for u in dados:
         try:
-            if u.get("email") == email and descriptografar(u.get("senha", "")) == senha:
+            if u.get("email") == email and u.get("senha", "") == senha_hash:
                 print(f"\nBem-vindo(a), {u.get('nome')}!")
                 u["acessos"] = u.get("acessos", 0) + 1
-                menu_usuario(u, dados, time.time())
+                menu_usuario(u, dados)
                 return
         except Exception as e:
             print("Erro ao tentar autenticar:", e)
             traceback.print_exc()
     print("Email ou senha incorretos!")
 
-def menu_usuario(u, dados, inicio):
+def menu_usuario(u, dados):
     while True:
         separador()
         print(f"MENU DE {u.get('nome')}")
@@ -107,11 +109,17 @@ def menu_usuario(u, dados, inicio):
         if op == "1":
             listar_cursos()
         elif op == "2":
-            curso("Lógica de Programação")
+            tempo = curso("Lógica de Programação")
+            u["tempo_total"] = float(u.get("tempo_total", 0)) + tempo
+            salvar_dados(dados)
         elif op == "3":
-            curso("Cibersegurança")
+            tempo = curso("Cibersegurança")
+            u["tempo_total"] = float(u.get("tempo_total", 0)) + tempo
+            salvar_dados(dados)
         elif op == "4":
-            curso("Python")
+            tempo = curso("Python")
+            u["tempo_total"] = float(u.get("tempo_total", 0)) + tempo
+            salvar_dados(dados)
         elif op == "5":
             print(f"\nNome: {u.get('nome')}\nEmail: {u.get('email')}\nCursos: {', '.join(u.get('cursos', []))}")
             print(f"Acessos: {u.get('acessos', 0)}\nTempo total: {int(float(u.get('tempo_total', 0)))}s")
@@ -123,7 +131,6 @@ def menu_usuario(u, dados, inicio):
                 print("Conta apagada com sucesso.")
                 break
         elif op == "7":
-            u["tempo_total"] = float(u.get("tempo_total", 0)) + (time.time() - inicio)
             salvar_dados(dados)
             print("Saindo...")
             break
@@ -140,7 +147,10 @@ def listar_cursos():
 def curso(nome):
     separador()
     print(f"CURSO DE {nome} - Módulo Introdutório")
+    inicio = time.time()
     input("\nPressione Enter para continuar...")
+    duracao = time.time() - inicio
+    return duracao
 
 def relatorio_alunos(dados):
     separador()
